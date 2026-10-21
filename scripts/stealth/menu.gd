@@ -1,6 +1,6 @@
 extends CanvasLayer
 
-const MENU_MAP = preload("res://assets/stealth/room_map.png")
+const MENU_MAP = preload("res://assets/stealth/menu_background.png")
 
 var mission
 var root: Control
@@ -15,6 +15,7 @@ var telegram_user := {"id": "guest", "name": "Guest Agent"}
 func _ready() -> void:
 	layer = 60
 	telegram_user = _read_telegram_user()
+	if mission.api.player_name != "Guest Agent": telegram_user.name = mission.api.player_name
 	root = Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
@@ -128,10 +129,19 @@ func _screen_heading(text: String) -> void:
 func _leaderboard() -> void:
 	_screen_heading("LEADERBOARD")
 	var info := Label.new()
-	info.text = "1. %s    %d\n\nGlobal Telegram rankings activate\nwhen the bot backend is connected." % [telegram_user.name, mission.best]
+	info.text = "Loading global rankings..."
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	info.add_theme_font_size_override("font_size", 20)
 	content.add_child(info)
+	mission.api.leaderboard_received.connect(func(entries):
+		if not is_instance_valid(info): return
+		if entries.is_empty():
+			info.text = "No global scores yet.\nYour session best: %d" % mission.best
+			return
+		var lines: Array[String] = []
+		for i in entries.size(): lines.append("%d. %s    %d" % [i + 1, entries[i].get("display_name", "Agent"), entries[i].get("best_score", 0)])
+		info.text = "\n\n".join(lines), CONNECT_ONE_SHOT)
+	mission.api.fetch_leaderboard()
 	_add_button("BACK", _restore_main)
 
 func _how_to_play() -> void:
@@ -159,11 +169,9 @@ func _send_feedback() -> void:
 	if message.is_empty():
 		feedback_box.placeholder_text = "Write feedback first."
 		return
-	var payload := JSON.stringify({"action": "feedback", "telegram_user_id": telegram_user.id, "message": message})
-	if OS.has_feature("web"):
-		JavaScriptBridge.eval("(function(){if(window.Telegram&&Telegram.WebApp&&Telegram.WebApp.sendData){Telegram.WebApp.sendData(%s);return true;}return false;})()" % JSON.stringify(payload), true)
+	mission.api.submit_feedback(message)
 	feedback_box.text = ""
-	feedback_box.placeholder_text = "Feedback prepared for the bot."
+	feedback_box.placeholder_text = "Feedback sent." if mission.api.connected() else "Open the game from the bot to send feedback."
 
 func _restore_main() -> void:
 	_clear_content()

@@ -62,19 +62,25 @@ progressive_web_app/enabled=false
     index = out / 'index.html'
     html = index.read_text().replace('Doodle Covert (DEBUG)', 'Doodle Covert')
     html = re.sub(r'"index\.pck":\d+', f'"index.pck":{(out / "index.pck").stat().st_size}', html)
+    # Upgrade older generated shells in place as well as fresh Godot exports.
+    html = re.sub(r'<img id="loader-doodle"[^>]*>', '', html)
+    html = re.sub(r'#loader-doodle \{[^}]*\}\s*', '', html)
+    html = re.sub(r'@keyframes doodle-step \{.*?\}\s*', '', html)
+    html = html.replace('#loader-track { position:relative; height:64px; }', '#loader-track { position:relative; height:42px; }')
+    if "url('menu_background.png')" not in html:
+        html = html.replace('#status-splash { display:none !important; }', "#status-splash { display:none !important; }\n#status { background:linear-gradient(rgba(2,12,18,.67),rgba(2,12,18,.84)),url('menu_background.png') center/cover no-repeat; }")
     loader_css = '''
 #status-splash { display:none !important; }
+#status { background:linear-gradient(rgba(2,12,18,.67),rgba(2,12,18,.84)),url('menu_background.png') center/cover no-repeat; }
 #loader-brand { width:min(78vw,720px); text-align:center; color:#91f1d0; font-family:Arial,sans-serif; }
 #loader-title { font-size:clamp(28px,5vw,54px); font-weight:800; letter-spacing:.08em; margin-bottom:42px; }
-#loader-track { position:relative; height:64px; }
-#loader-doodle { position:absolute; width:68px; height:auto; bottom:18px; left:0%; transform:translateX(-40%); transition:left .35s linear; animation:doodle-step .36s ease-in-out infinite alternate; }
+#loader-track { position:relative; height:42px; }
 #status-progress { width:100%; height:15px; margin:38px 0 0; accent-color:#7ce0bf; }
 #loader-percent { margin-top:12px; color:#b6c8ce; font-size:20px; font-weight:700; }
-@keyframes doodle-step { from{transform:translateX(-40%) translateY(0) rotate(-2deg)} to{transform:translateX(-40%) translateY(-6px) rotate(2deg)} }
 '''
     if '#loader-brand' not in html:
         html = html.replace('</style>', loader_css + '\n</style>')
-        html = html.replace('<img id="status-splash" src="index.png" alt="">\n\t\t\t<progress id="status-progress"></progress>', '<div id="loader-brand"><div id="loader-title">DOODLE / COVERT</div><div id="loader-track"><img id="loader-doodle" src="loading_doodle.png" alt=""><progress id="status-progress"></progress></div><div id="loader-percent">0%</div></div>')
+        html = html.replace('<img id="status-splash" src="index.png" alt="">\n\t\t\t<progress id="status-progress"></progress>', '<div id="loader-brand"><div id="loader-title">DOODLE / COVERT</div><div id="loader-track"><progress id="status-progress"></progress></div><div id="loader-percent">0%</div></div>')
         html = html.replace('<script src="index.js"></script>', '<script src="https://telegram.org/js/telegram-web-app.js"></script>\n\t\t<script src="index.js"></script>')
     progress_block = '''let shownProgress = 0;
 \t\tlet preparationTimer = null;
@@ -83,7 +89,6 @@ progressive_web_app/enabled=false
 \t\t\tstatusProgress.value = shownProgress;
 \t\t\tstatusProgress.max = 100;
 \t\t\tdocument.getElementById('loader-percent').textContent = Math.round(shownProgress) + '%';
-\t\t\tdocument.getElementById('loader-doodle').style.left = shownProgress + '%';
 \t\t}
 \t\tfunction beginPreparation() {
 \t\t\tif (preparationTimer) return;
@@ -105,9 +110,10 @@ progressive_web_app/enabled=false
 \t\t\tsetTimeout(() => setStatusMode('hidden'), 350);
 \t\t}, displayFailureNotice);'''
     html = re.sub(r"engine\.startGame\(\{\s*'onProgress': function \(current, total\) \{.*?\}\s*,?\s*\}\)\.then\(\(\) => \{.*?\}, displayFailureNotice\);", progress_block, html, flags=re.S)
+    html = re.sub(r'^.*loader-doodle.*\n?', '', html, flags=re.M)
     index.write_text(html)
     shutil.copy2(root / 'assets/stealth/boot_splash.png', out / 'index.png')
-    shutil.copy2(root / 'assets/stealth/loading_doodle.png', out / 'loading_doodle.png')
+    shutil.copy2(root / 'assets/stealth/menu_background.png', out / 'menu_background.png')
     launch = subprocess.run([godot, '--headless', '--main-pack', str(out / 'index.pck'), '--quit-after', '120'], capture_output=True, text=True, cwd=temp, timeout=30)
     if launch.returncode or 'ERROR:' in launch.stderr:
         raise RuntimeError(launch.stdout + launch.stderr)

@@ -77,13 +77,13 @@ body {
 }
 		
 #status-splash { display:none !important; }
+#status { background:linear-gradient(rgba(2,12,18,.67),rgba(2,12,18,.84)),url('menu_background.png') center/cover no-repeat; }
 #loader-brand { width:min(78vw,720px); text-align:center; color:#91f1d0; font-family:Arial,sans-serif; }
 #loader-title { font-size:clamp(28px,5vw,54px); font-weight:800; letter-spacing:.08em; margin-bottom:42px; }
-#loader-track { position:relative; height:64px; }
-#loader-doodle { position:absolute; width:82px; height:auto; bottom:19px; left:0%; transform:translateX(-40%); transition:left .18s linear; animation:doodle-step .42s ease-in-out infinite alternate; }
+#loader-track { position:relative; height:42px; }
 #status-progress { width:100%; height:15px; margin:38px 0 0; accent-color:#7ce0bf; }
 #loader-percent { margin-top:12px; color:#b6c8ce; font-size:20px; font-weight:700; }
-@keyframes doodle-step { from{transform:translateX(-40%) translateY(0) rotate(-2deg)} to{transform:translateX(-40%) translateY(-6px) rotate(2deg)} }
+to{transform:translateX(-40%) translateY(-6px) rotate(2deg)} }
 
 </style>
 		<link id="-gd-engine-icon" rel="icon" type="image/png" href="index.icon.png" />
@@ -100,14 +100,14 @@ body {
 		</noscript>
 
 		<div id="status">
-			<div id="loader-brand"><div id="loader-title">DOODLE / COVERT</div><div id="loader-track"><img id="loader-doodle" src="loading_doodle.png" alt=""><progress id="status-progress"></progress></div><div id="loader-percent">0%</div></div>
+			<div id="loader-brand"><div id="loader-title">DOODLE / COVERT</div><div id="loader-track"><progress id="status-progress"></progress></div><div id="loader-percent">0%</div></div>
 			<div id="status-notice"></div>
 		</div>
 
 		<script src="https://telegram.org/js/telegram-web-app.js"></script>
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":4019056,"index.wasm":1619701},"focusCanvas":true,"gdextensionLibs":[]};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":4157536,"index.wasm":1619701},"focusCanvas":true,"gdextensionLibs":[]};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -195,7 +195,48 @@ const engine = new Engine(GODOT_CONFIG);
 			statusProgress.value = shownProgress;
 			statusProgress.max = 100;
 			document.getElementById('loader-percent').textContent = Math.round(shownProgress) + '%';
-			document.getElementById('loader-doodle').style.left = shownProgress + '%';
+		}
+		function beginPreparation() {
+			if (preparationTimer) return;
+			preparationTimer = setInterval(() => {
+				if (shownProgress < 98) paintProgress(shownProgress + 1);
+			}, 650);
+		}
+		let shownProgress = 0;
+		let preparationTimer = null;
+		function paintProgress(percent) {
+			shownProgress = Math.max(shownProgress, Math.min(100, percent));
+			statusProgress.value = shownProgress;
+			statusProgress.max = 100;
+			document.getElementById('loader-percent').textContent = Math.round(shownProgress) + '%';
+		}
+		function beginPreparation() {
+			if (preparationTimer) return;
+			preparationTimer = setInterval(() => {
+				if (shownProgress < 98) paintProgress(shownProgress + 1);
+			}, 650);
+		}
+		let shownProgress = 0;
+		let preparationTimer = null;
+		function paintProgress(percent) {
+			shownProgress = Math.max(shownProgress, Math.min(100, percent));
+			statusProgress.value = shownProgress;
+			statusProgress.max = 100;
+			document.getElementById('loader-percent').textContent = Math.round(shownProgress) + '%';
+		}
+		function beginPreparation() {
+			if (preparationTimer) return;
+			preparationTimer = setInterval(() => {
+				if (shownProgress < 98) paintProgress(shownProgress + 1);
+			}, 650);
+		}
+		let shownProgress = 0;
+		let preparationTimer = null;
+		function paintProgress(percent) {
+			shownProgress = Math.max(shownProgress, Math.min(100, percent));
+			statusProgress.value = shownProgress;
+			statusProgress.max = 100;
+			document.getElementById('loader-percent').textContent = Math.round(shownProgress) + '%';
 		}
 		function beginPreparation() {
 			if (preparationTimer) return;

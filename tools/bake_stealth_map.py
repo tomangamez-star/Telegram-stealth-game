@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Bake the mobile stealth floor and custom startup art into PNG files."""
 from pathlib import Path
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageFilter
 
 OUT = Path(__file__).resolve().parents[1] / "assets/stealth"
 OUT.mkdir(parents=True, exist_ok=True)
@@ -70,11 +70,14 @@ for x,y in [(85,250),(1515,250),(85,550),(1515,850)]:
 
 floor.save(OUT / "room_map.png", optimize=True)
 
-# Engine boot splash: replaces the default Godot branding.
-boot = Image.new("RGB", (1280,720), "#071017")
-b = ImageDraw.Draw(boot)
-for radius, color in [(185,"#0b1f28"),(125,"#10313a"),(70,"#174a4d")]:
-    b.ellipse((640-radius,315-radius,640+radius,315+radius), fill=color)
+# Blurred mission-map artwork shared by the menu and engine boot screen.
+background = floor.resize((1280, 960)).crop((0, 120, 1280, 840)).filter(ImageFilter.GaussianBlur(10))
+background = Image.alpha_composite(background.convert("RGBA"), Image.new("RGBA", (1280,720), (3,15,22,170)))
+b = ImageDraw.Draw(background)
+for radius, color, width in [(190,"#173c42",10),(132,"#3d7b70",6),(78,"#8ff1d1",4)]:
+    b.ellipse((640-radius,305-radius,640+radius,305+radius), outline=color, width=width)
+b.line((510,305,770,305), fill="#8ff1d1", width=5)
+b.line((640,175,640,435), fill="#8ff1d1", width=5)
 try:
     title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 54)
     small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
@@ -86,21 +89,7 @@ b.text(((1280-(box[2]-box[0]))/2,535), title, font=title_font, fill="#91f1d0")
 subtitle = "PREPARING THE MISSION"
 box = b.textbbox((0,0), subtitle, font=small_font)
 b.text(((1280-(box[2]-box[0]))/2,610), subtitle, font=small_font, fill="#78949e")
-# Simple top-down loader matching the actual in-game doodle silhouette.
-doodle = Image.new("RGBA", (128,150), (0,0,0,0))
-dd = ImageDraw.Draw(doodle)
-dd.ellipse((35,76,93,134), fill="#17232a", outline="#071015", width=5)  # body
-dd.ellipse((21,83,43,111), fill="#dda077", outline="#15171b", width=4)  # left hand
-dd.ellipse((85,83,107,111), fill="#dda077", outline="#15171b", width=4) # right hand
-dd.ellipse((40,121,61,148), fill="#111820", outline="#060a0d", width=4)
-dd.ellipse((67,121,88,148), fill="#111820", outline="#060a0d", width=4)
-dd.ellipse((18,10,110,106), fill="#111318", outline="#dda077", width=5) # head/hair
-for x,y,r in [(39,24,17),(61,15,19),(82,24,18),(30,46,18),(55,39,22),(82,45,21),(51,62,23),(76,65,22)]:
-    dd.ellipse((x-r,y-r,x+r,y+r), fill="#17191e")
-dd.arc((21,13,107,104), 195, 345, fill="#353842", width=4)
-doodle.save(OUT / "loading_doodle.png", optimize=True)
-boot.paste(doodle, (640-doodle.width//2, 315-doodle.height//2), doodle)
+background.convert("RGB").save(OUT / "menu_background.png", optimize=True)
+background.convert("RGB").save(OUT / "boot_splash.png", optimize=True)
 
-boot.save(OUT / "boot_splash.png", optimize=True)
-
-print("Baked room_map.png, boot_splash.png and loading_doodle.png")
+print("Baked room_map.png, menu_background.png and boot_splash.png")

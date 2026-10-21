@@ -26,11 +26,17 @@ func run() -> void:
 	check(mission.EXIT.y < 100.0, "Extraction is at the far end of the hallway")
 	check(mission.audio.streams.has("player_run_steps"), "Hyphenated player run sound is loaded")
 	check(not mission.audio.streams.has("player_stealth_steps"), "Stealth remains silent when its sound is absent")
+	mission.audio.update_player_steps(200.0, true, 0.01)
+	mission.audio.update_player_steps(0.0, false, 0.01)
+	check(not mission.audio.players["player_run_steps"].playing, "Run sound stops immediately with movement")
 	var sentry = mission.guards[2]
 	var first_facing: Vector2 = sentry.display_facing
 	sentry._physics_process(2.8)
 	check(sentry.position == Vector2(860, 605) and sentry.display_facing != first_facing, "Sentry waits then rotates without walking")
 	var guard = mission.guards[0]
+	mission.audio.update_guard_steps(guard, 90.0, 0.01)
+	mission.audio.update_guard_steps(guard, 0.0, 0.01)
+	check(not mission.audio.guard_step_players[guard.get_instance_id()].playing, "Guard steps stop immediately with movement")
 	guard.position = Vector2(700, 420)
 	guard.display_facing = Vector2.RIGHT
 	mission.player.position = Vector2(820, 420)

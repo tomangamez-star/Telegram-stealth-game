@@ -10,9 +10,8 @@ const EVENT_NAMES := [
 var mission
 var streams := {}
 var players := {}
-var player_step_time := 0.0
-var guard_step_times := {}
-var cough_time := 8.0
+var guard_step_players := {}
+var cough_time := 35.0
 var enabled := true
 
 func _ready() -> void:
@@ -42,16 +41,22 @@ func play_event(event_name: String) -> void:
 	player.play()
 
 func update_player_steps(speed: float, running: bool, delta: float) -> void:
-	player_step_time -= delta
-	# Stealth walking intentionally stays silent until it receives its own sound.
-	if not running or speed < 25.0 or player_step_time > 0.0: return
-	play_event("player_run_steps")
-	player_step_time = 0.26
+	# Movement tracks are treated as loops and stopped on the exact frame movement ends.
+	# Stealth walking intentionally stays silent in this level.
+	if not players.has("player_run_steps"): return
+	var player: AudioStreamPlayer = players["player_run_steps"]
+	if enabled and running and speed >= 25.0:
+		if not player.playing: player.play()
+	elif player.playing:
+		player.stop()
 
 func toggle_enabled() -> bool:
 	enabled = not enabled
 	for player in players.values():
 		player.volume_db = 0.0 if enabled else -80.0
+	for player in guard_step_players.values():
+		player.volume_db = 0.0 if enabled else -80.0
+	if not enabled: stop_movement()
 	return enabled
 
 func unlock_web_audio() -> void:
@@ -60,11 +65,23 @@ func unlock_web_audio() -> void:
 
 func update_guard_steps(guard, speed: float, delta: float) -> void:
 	var key: int = guard.get_instance_id()
-	guard_step_times[key] = float(guard_step_times.get(key, 0.0)) - delta
-	if speed > 20.0 and guard_step_times[key] <= 0.0:
-		play_event("guard_steps")
-		guard_step_times[key] = 0.48
+	if streams.has("guard_steps") and not guard_step_players.has(key):
+		var step_player := AudioStreamPlayer.new()
+		step_player.stream = streams["guard_steps"]
+		step_player.bus = "Master"
+		add_child(step_player)
+		guard_step_players[key] = step_player
+	if guard_step_players.has(key):
+		var step_player: AudioStreamPlayer = guard_step_players[key]
+		if enabled and speed > 20.0:
+			if not step_player.playing: step_player.play()
+		elif step_player.playing:
+			step_player.stop()
 	cough_time -= delta
 	if cough_time <= 0.0 and guard.guard_mode == "SENTRY":
 		play_event("guard_cough")
-		cough_time = randf_range(9.0, 16.0)
+		cough_time = randf_range(30.0, 40.0)
+
+func stop_movement() -> void:
+	if players.has("player_run_steps"): players["player_run_steps"].stop()
+	for player in guard_step_players.values(): player.stop()

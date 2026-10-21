@@ -5,6 +5,7 @@ const Controls = preload("res://scripts/stealth/controls.gd")
 const Overlay = preload("res://scripts/stealth/overlay.gd")
 const AudioDirector = preload("res://scripts/stealth/audio_director.gd")
 const MainMenu = preload("res://scripts/stealth/menu.gd")
+const ApiClient = preload("res://scripts/stealth/api_client.gd")
 const MAP_TEXTURE = preload("res://assets/stealth/room_map.png")
 
 const MAP_SIZE := Vector2(1600, 1200)
@@ -45,6 +46,7 @@ var actors: Node2D
 var camera: Camera2D
 var game_started := false
 var main_menu
+var api
 
 func _ready() -> void:
 	if OS.has_feature("web"): Engine.max_fps = 45
@@ -55,6 +57,8 @@ func _ready() -> void:
 	audio = AudioDirector.new()
 	audio.mission = self
 	add_child(audio)
+	api = ApiClient.new()
+	add_child(api)
 	controls = Controls.new()
 	controls.mission = self
 	add_child(controls)
@@ -222,7 +226,9 @@ func finish(success: bool) -> void:
 	won = success
 	if won: score += 500 + maxi(0, 300 - int(elapsed)) + (250 if detections == 0 else 0)
 	best = maxi(best, score)
+	audio.stop_movement()
 	audio.play_event("mission_complete" if won else "mission_failed")
+	api.submit_score(score, won, level, collected, elapsed, detections)
 	controls.show_result(won)
 
 func restart() -> void:
