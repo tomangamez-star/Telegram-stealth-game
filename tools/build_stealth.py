@@ -66,6 +66,7 @@ progressive_web_app/enabled=false
     html = re.sub(r'<img id="loader-doodle"[^>]*>', '', html)
     html = re.sub(r'#loader-doodle \{[^}]*\}\s*', '', html)
     html = re.sub(r'@keyframes doodle-step \{.*?\}\s*', '', html)
+    html = re.sub(r'^to\{transform:.*?\}\s*\}\s*$', '', html, flags=re.M)
     html = html.replace('#loader-track { position:relative; height:64px; }', '#loader-track { position:relative; height:42px; }')
     if "url('menu_background.png')" not in html:
         html = html.replace('#status-splash { display:none !important; }', "#status-splash { display:none !important; }\n#status { background:linear-gradient(rgba(2,12,18,.67),rgba(2,12,18,.84)),url('menu_background.png') center/cover no-repeat; }")
@@ -109,7 +110,9 @@ progressive_web_app/enabled=false
 \t\t\tdocument.title = 'Doodle Covert';
 \t\t\tsetTimeout(() => setStatusMode('hidden'), 350);
 \t\t}, displayFailureNotice);'''
-    html = re.sub(r"engine\.startGame\(\{\s*'onProgress': function \(current, total\) \{.*?\}\s*,?\s*\}\)\.then\(\(\) => \{.*?\}, displayFailureNotice\);", progress_block, html, flags=re.S)
+    # Strip a previously injected loader controller before inserting the new
+    # one. This keeps repeated exports from duplicating `let` declarations.
+    html = re.sub(r"(?:\s*let shownProgress = 0;.*?)*\s*engine\.startGame\(\{\s*'onProgress': function \(current, total\) \{.*?\}\s*,?\s*\}\)\.then\(\(\) => \{.*?\}, displayFailureNotice\);", "\n\t\t" + progress_block, html, flags=re.S)
     html = re.sub(r'^.*loader-doodle.*\n?', '', html, flags=re.M)
     index.write_text(html)
     shutil.copy2(root / 'assets/stealth/boot_splash.png', out / 'index.png')
