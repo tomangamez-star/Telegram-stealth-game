@@ -1,5 +1,7 @@
 extends CanvasLayer
 
+const MENU_MAP = preload("res://assets/stealth/room_map.png")
+
 var mission
 var root: Control
 var panel: PanelContainer
@@ -16,14 +18,34 @@ func _ready() -> void:
 	root = Control.new()
 	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.mouse_filter = Control.MOUSE_FILTER_STOP
-	var background := ColorRect.new()
+	var background := TextureRect.new()
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.color = Color("#071017")
+	background.texture = MENU_MAP
+	background.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	background.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	background.modulate = Color(0.32, 0.42, 0.46, 0.72)
+	background.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	root.add_child(background)
+	var shade := ColorRect.new()
+	shade.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	shade.color = Color(0.015, 0.035, 0.05, 0.64)
+	shade.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	root.add_child(shade)
 	add_child(root)
 
 	panel = PanelContainer.new()
 	panel.custom_minimum_size = Vector2(560, 610)
+	var panel_style := StyleBoxFlat.new()
+	panel_style.bg_color = Color(0.025, 0.075, 0.095, 0.94)
+	panel_style.border_color = Color("#65c9ad")
+	panel_style.set_border_width_all(2)
+	panel_style.corner_radius_top_left = 22
+	panel_style.corner_radius_top_right = 22
+	panel_style.corner_radius_bottom_left = 22
+	panel_style.corner_radius_bottom_right = 22
+	panel_style.shadow_color = Color(0, 0, 0, 0.65)
+	panel_style.shadow_size = 18
+	panel.add_theme_stylebox_override("panel", panel_style)
 	root.add_child(panel)
 	var margin := MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]: margin.add_theme_constant_override("margin_" + side, 34)
@@ -57,9 +79,24 @@ func _add_button(text: String, callback: Callable) -> Button:
 	button.text = text
 	button.custom_minimum_size = Vector2(450, 58)
 	button.add_theme_font_size_override("font_size", 21)
+	button.add_theme_color_override("font_color", Color("#e8fffa"))
+	button.add_theme_stylebox_override("normal", _button_style(Color("#102a32"), Color("#3e766e")))
+	button.add_theme_stylebox_override("hover", _button_style(Color("#174039"), Color("#78dfbd")))
+	button.add_theme_stylebox_override("pressed", _button_style(Color("#246651"), Color("#9affdc")))
 	button.pressed.connect(callback)
 	content.add_child(button)
 	return button
+
+func _button_style(fill: Color, border: Color) -> StyleBoxFlat:
+	var style := StyleBoxFlat.new()
+	style.bg_color = fill
+	style.border_color = border
+	style.set_border_width_all(2)
+	style.corner_radius_top_left = 12
+	style.corner_radius_top_right = 12
+	style.corner_radius_bottom_left = 12
+	style.corner_radius_bottom_right = 12
+	return style
 
 func _reflow() -> void:
 	var size := get_viewport().get_visible_rect().size

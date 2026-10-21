@@ -107,7 +107,7 @@ body {
 		<script src="https://telegram.org/js/telegram-web-app.js"></script>
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":4094384,"index.wasm":1619701},"focusCanvas":true,"gdextensionLibs":[]};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":4019056,"index.wasm":1619701},"focusCanvas":true,"gdextensionLibs":[]};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG);
 
@@ -188,21 +188,33 @@ const engine = new Engine(GODOT_CONFIG);
 		}
 	} else {
 		setStatusMode('progress');
+		let shownProgress = 0;
+		let preparationTimer = null;
+		function paintProgress(percent) {
+			shownProgress = Math.max(shownProgress, Math.min(100, percent));
+			statusProgress.value = shownProgress;
+			statusProgress.max = 100;
+			document.getElementById('loader-percent').textContent = Math.round(shownProgress) + '%';
+			document.getElementById('loader-doodle').style.left = shownProgress + '%';
+		}
+		function beginPreparation() {
+			if (preparationTimer) return;
+			preparationTimer = setInterval(() => {
+				if (shownProgress < 98) paintProgress(shownProgress + 1);
+			}, 650);
+		}
 		engine.startGame({
 			'onProgress': function (current, total) {
 				if (current > 0 && total > 0) {
-					statusProgress.value = current;
-					statusProgress.max = total;
-					const percent = Math.max(0, Math.min(100, Math.round(current / total * 100)));
-					document.getElementById('loader-percent').textContent = percent + '%';
-					document.getElementById('loader-doodle').style.left = percent + '%';
-				} else {
-					statusProgress.removeAttribute('value');
-					statusProgress.removeAttribute('max');
+					paintProgress(Math.round((current / total) * 82));
+					if (current >= total) beginPreparation();
 				}
 			},
 		}).then(() => {
-			setStatusMode('hidden');
+			if (preparationTimer) clearInterval(preparationTimer);
+			paintProgress(100);
+			document.title = 'Doodle Covert';
+			setTimeout(() => setStatusMode('hidden'), 350);
 		}, displayFailureNotice);
 	}
 }());

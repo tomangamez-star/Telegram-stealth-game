@@ -10,7 +10,7 @@ const MAP_TEXTURE = preload("res://assets/stealth/room_map.png")
 const MAP_SIZE := Vector2(1600, 1200)
 const CELL := 25
 const WALLS := [
-	Rect2(0, 0, 740, 40), Rect2(860, 0, 740, 40), Rect2(0, 1160, 1600, 40),
+	Rect2(0, 0, 1600, 40), Rect2(0, 1160, 1600, 40),
 	Rect2(0, 0, 40, 1200), Rect2(1560, 0, 40, 1200),
 	Rect2(620, 40, 40, 80), Rect2(620, 220, 40, 200),
 	Rect2(620, 520, 40, 200), Rect2(620, 820, 40, 200), Rect2(620, 1120, 40, 40),

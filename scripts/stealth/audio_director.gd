@@ -30,7 +30,9 @@ func _load_optional(stem: String):
 	for candidate in [stem, stem.replace("_", "-")]:
 		for extension in [".wav", ".mp3"]:
 			var path: String = AUDIO_ROOT + candidate + extension
-			if FileAccess.file_exists(path): return load(path)
+			# Exported Web resources are remapped inside index.pck. FileAccess can
+			# report false even though ResourceLoader can resolve the imported asset.
+			if ResourceLoader.exists(path): return ResourceLoader.load(path)
 	return null
 
 func play_event(event_name: String) -> void:

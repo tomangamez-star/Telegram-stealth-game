@@ -84,6 +84,11 @@ func run() -> void:
 	check(mission.score == 0 and mission.collected == 0 and mission.level == 2, "Retry resets failed run without advancing sector")
 	for i in 240: await physics_frame
 	print("Stealth regression: %d failures" % errors)
+	for audio_player in mission.audio.players.values():
+		audio_player.stop()
+		audio_player.stream = null
+	mission.audio.streams.clear()
+	mission.audio.players.clear()
 	mission.queue_free()
 	await process_frame
 	quit(1 if errors else 0)

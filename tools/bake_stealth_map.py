@@ -7,7 +7,7 @@ OUT = Path(__file__).resolve().parents[1] / "assets/stealth"
 OUT.mkdir(parents=True, exist_ok=True)
 SIZE = (1600, 1200)
 WALLS = [
-    (0,0,740,40),(860,0,740,40),(0,1160,1600,40),(0,0,40,1200),(1560,0,40,1200),
+    (0,0,1600,40),(0,1160,1600,40),(0,0,40,1200),(1560,0,40,1200),
     (620,40,40,80),(620,220,40,200),(620,520,40,200),(620,820,40,200),(620,1120,40,40),
     (940,40,40,80),(940,220,40,200),(940,520,40,200),(940,820,40,200),(940,1120,40,40),
     (40,290,580,30),(980,290,580,30),(40,590,580,30),(980,590,580,30),
@@ -86,21 +86,20 @@ b.text(((1280-(box[2]-box[0]))/2,535), title, font=title_font, fill="#91f1d0")
 subtitle = "PREPARING THE MISSION"
 box = b.textbbox((0,0), subtitle, font=small_font)
 b.text(((1280-(box[2]-box[0]))/2,610), subtitle, font=small_font, fill="#78949e")
-# Compose the actual original directional doodle into a transparent loader asset.
-atlas_path = OUT.parent / "characters" / "directional_rig.png"
-if atlas_path.exists():
-    atlas = Image.open(atlas_path).convert("RGBA")
-    cell_w, cell_h = atlas.width // 4, atlas.height // 4
-    head = atlas.crop((0, cell_h, cell_w, cell_h * 2))
-    body = atlas.crop((0, cell_h * 3, cell_w, cell_h * 4))
-    doodle = Image.new("RGBA", (cell_w, int(cell_h * 1.42)), (0,0,0,0))
-    doodle.alpha_composite(body, (0, int(cell_h * 0.42)))
-    doodle.alpha_composite(head, (0, 0))
-    bounds = doodle.getbbox()
-    if bounds: doodle = doodle.crop(bounds)
-    doodle.thumbnail((180,220), Image.Resampling.LANCZOS)
-    doodle.save(OUT / "loading_doodle.png", optimize=True)
-    boot.paste(doodle, (640-doodle.width//2, 315-doodle.height//2), doodle)
+# Simple top-down loader matching the actual in-game doodle silhouette.
+doodle = Image.new("RGBA", (128,150), (0,0,0,0))
+dd = ImageDraw.Draw(doodle)
+dd.ellipse((35,76,93,134), fill="#17232a", outline="#071015", width=5)  # body
+dd.ellipse((21,83,43,111), fill="#dda077", outline="#15171b", width=4)  # left hand
+dd.ellipse((85,83,107,111), fill="#dda077", outline="#15171b", width=4) # right hand
+dd.ellipse((40,121,61,148), fill="#111820", outline="#060a0d", width=4)
+dd.ellipse((67,121,88,148), fill="#111820", outline="#060a0d", width=4)
+dd.ellipse((18,10,110,106), fill="#111318", outline="#dda077", width=5) # head/hair
+for x,y,r in [(39,24,17),(61,15,19),(82,24,18),(30,46,18),(55,39,22),(82,45,21),(51,62,23),(76,65,22)]:
+    dd.ellipse((x-r,y-r,x+r,y+r), fill="#17191e")
+dd.arc((21,13,107,104), 195, 345, fill="#353842", width=4)
+doodle.save(OUT / "loading_doodle.png", optimize=True)
+boot.paste(doodle, (640-doodle.width//2, 315-doodle.height//2), doodle)
 
 boot.save(OUT / "boot_splash.png", optimize=True)
 
