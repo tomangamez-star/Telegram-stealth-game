@@ -13,11 +13,13 @@ root = pathlib.Path(__file__).resolve().parents[1]
 godot = shutil.which(sys.argv[1]) or str(pathlib.Path(sys.argv[1]).resolve())
 out = pathlib.Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else root / 'build/stealth'
 out.mkdir(parents=True, exist_ok=True)
+template_dir = pathlib.Path.home() / '.local/share/godot/export_templates/4.3.stable'
+export_mode = '--export-release' if (template_dir / 'web_nothreads_release.zip').exists() else '--export-debug'
 with tempfile.TemporaryDirectory(prefix='doodle-covert-') as temp:
     stage = pathlib.Path(temp) / 'project'
     stage.mkdir()
     shutil.copy2(root / 'project.godot', stage / 'project.godot')
-    for folder in ['scripts/stealth', 'assets/characters']:
+    for folder in ['scripts/stealth', 'assets/characters', 'assets/stealth']:
         shutil.copytree(root / folder, stage / folder, ignore=shutil.ignore_patterns('*.import'))
     for filename in ['doodle_player.gd', 'doodle_visual.gd', 'doodle_personality.gd', 'doodle_atlas.gd', 'directional_rig_atlas.gd']:
         shutil.copy2(root / 'scripts' / filename, stage / 'scripts' / filename)
@@ -36,7 +38,7 @@ export_path="build/stealth/index.html"
 exclude_filter="tests/*,tools/*,web/*,build/*"
 
 [preset.0.options]
-variant/extensions_support=false
+variant/extensions_support=true
 variant/thread_support=false
 vram_texture_compression/for_desktop=false
 vram_texture_compression/for_mobile=false
@@ -46,7 +48,7 @@ progressive_web_app/enabled=false
 ''')
     subprocess.run([godot, '--headless', '--editor', '--path', str(stage), '--import', '--quit'], check=True)
     subprocess.run([godot, '--headless', '--path', str(stage), '--script', 'tests/stealth_regression.gd'], check=True)
-    subprocess.run([godot, '--headless', '--path', str(stage), '--export-release', 'Stealth Web', str(out / 'index.html')], check=True)
+    subprocess.run([godot, '--headless', '--path', str(stage), export_mode, 'Stealth Web', str(out / 'index.html')], check=True)
     launch = subprocess.run([godot, '--headless', '--main-pack', str(out / 'index.pck'), '--quit-after', '120'], capture_output=True, text=True, cwd=temp, timeout=30)
     if launch.returncode or 'ERROR:' in launch.stderr:
         raise RuntimeError(launch.stdout + launch.stderr)

@@ -1,6 +1,7 @@
 extends "res://scripts/doodle_player.gd"
 
-# Reuse the original doodle rig and movement; no style switch or sandbox actions.
+# Expensive sight and route work is timer-driven. Movement stays on the
+# physics tick so touch controls remain responsive.
 var mission
 var guard := false
 var patrol := PackedVector2Array()
@@ -10,8 +11,14 @@ var state := "PATROL"
 var last_seen := Vector2.ZERO
 var search_time := 0.0
 var repath_time := 0.0
+var sight_time := 0.0
+var visual_time := 0.0
+var cached_sees := false
 var path := PackedVector2Array()
 var path_index := 0
+var in_locker := false
+var locker_index := -1
+var stealth_pose := true
 
 func cycle_player_visual_style() -> int:
 	player_visual_style = 0
@@ -22,13 +29,31 @@ func _physics_process(delta: float) -> void:
 		velocity = Vector2.ZERO
 		return
 	if not guard:
-		var keyboard := Input.get_vector("move_left", "move_right", "move_up", "move_down")
-		var movement: Vector2 = controls.movement_vector if controls.movement_vector.length() > 0.04 else keyboard
-		_apply_controlled_motion(movement, controls.run_pressed or Input.is_action_pressed("run"), delta)
-		visual.queue_redraw()
+		_update_player(delta)
 		return
+	_update_guard(delta)
+
+func _update_player(delta: float) -> void:
+	if in_locker:
+		velocity = Vector2.ZERO
+		stealth_pose = true
+		return
+	var keyboard := Input.get_vector("move_left", "move_right", "move_up", "move_down")
+	var movement: Vector2 = controls.movement_vector if controls.movement_vector.length() > 0.04 else keyboard
+	var wants_run: bool = controls.run_pressed or Input.is_action_pressed("run")
+	# Default motion is a quiet, cautious walk. RUN is for breaking contact.
+	var speed_scale := 0.56 if not wants_run else 0.76
+	stealth_pose = not wants_run
+	_apply_controlled_motion(movement * speed_scale, wants_run, delta)
+	_queue_visual(delta, 30.0)
+
+func _update_guard(delta: float) -> void:
 	var target: Vector2 = mission.player.global_position
-	var sees: bool = can_see(target) and not mission.player_hidden()
+	sight_time -= delta
+	if sight_time <= 0.0:
+		sight_time = 0.10
+		cached_sees = can_see(target) and not mission.player_hidden()
+	var sees := cached_sees
 	if sees:
 		last_seen = target
 		suspicion = minf(1.0, suspicion + delta * 1.25)
@@ -49,7 +74,6 @@ func _physics_process(delta: float) -> void:
 	else:
 		suspicion = maxf(0.0, suspicion - delta * 0.45)
 		if mission.player.is_running and mission.player.velocity.length() > 100.0 and global_position.distance_to(target) < 260.0:
-			# Sound travels around cover, but only reveals the last heard position.
 			last_seen = target
 			state = "SEARCH"
 			search_time = 3.0
@@ -59,19 +83,26 @@ func _physics_process(delta: float) -> void:
 		destination = patrol[patrol_index]
 	repath_time -= delta
 	if repath_time <= 0.0:
-		repath_time = 0.35
+		repath_time = 0.48 if OS.has_feature("web") else 0.34
 		path = mission.find_path(global_position, destination)
 		path_index = 0
 	while path_index < path.size() and global_position.distance_to(path[path_index]) < 30.0:
 		path_index += 1
 	var movement := Vector2.ZERO
 	if path_index < path.size(): movement = global_position.direction_to(path[path_index])
-	_apply_controlled_motion(movement * (0.87 if state == "CHASE" else 0.48), false, delta)
+	stealth_pose = false
+	_apply_controlled_motion(movement * (0.72 if state == "CHASE" else 0.40), false, delta)
 	if state == "SEARCH" and global_position.distance_to(last_seen) < 45.0:
 		facing = facing.rotated(delta * 1.4)
 		display_facing = facing
 	if state == "CHASE" and global_position.distance_to(target) < 65.0:
 		mission.finish(false)
+	_queue_visual(delta, 20.0 if OS.has_feature("web") else 30.0)
+
+func _queue_visual(delta: float, fps: float) -> void:
+	visual_time -= delta
+	if visual_time > 0.0: return
+	visual_time = 1.0 / fps
 	visual.queue_redraw()
 
 func can_see(target: Vector2) -> bool:

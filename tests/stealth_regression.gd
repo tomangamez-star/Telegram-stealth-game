@@ -16,31 +16,38 @@ func run() -> void:
 	check(mission.player.player_visual_style == 0, "Style stays locked")
 	check(not mission.clear_sight(Vector2(300, 250), Vector2(550, 250)), "Wall blocks sight")
 	check(mission.clear_sight(Vector2(500, 450), Vector2(700, 450)), "Open corridor allows sight")
-	check(mission.find_path(Vector2(570, 450), Vector2(1000, 1000)).size() > 1, "Guards can route around cover")
+	check(mission.find_path(Vector2(570, 450), Vector2(1090, 900)).size() > 1, "Guards can route through room doors")
 	for intel in mission.INTEL:
-		check(mission.find_path(Vector2(170, 1040), intel).size() > 1, "Intel is reachable")
-	check(mission.find_path(Vector2(170, 1040), mission.EXIT).size() > 1, "Extraction is reachable")
+		check(mission.find_path(Vector2(250, 1080), intel).size() > 1, "Intel is reachable")
+	check(mission.find_path(Vector2(250, 1080), mission.EXIT).size() > 1, "Extraction is reachable")
 	var guard = mission.guards[0]
-	guard.position = Vector2(1020, 440)
-	guard.display_facing = Vector2.DOWN
-	mission.player.position = Vector2(1020, 570)
+	guard.position = Vector2(220, 420)
+	guard.display_facing = Vector2.RIGHT
+	mission.player.position = Vector2(340, 420)
 	check(guard.can_see(mission.player.position), "Guard sees player in cone")
-	check(not guard.can_see(Vector2(1020, 300)), "Guard cannot see behind itself")
+	check(not guard.can_see(Vector2(100, 420)), "Guard cannot see behind itself")
 	guard._physics_process(0.9)
 	check(guard.state == "CHASE" and mission.detections == 1, "Sustained detection triggers chase")
-	mission.player.position = Vector2(150, 850)
-	mission.player.is_running = false
-	check(mission.player_hidden(), "Walking in concealment hides player")
+	mission.player.position = Vector2(600, 800)
+	check(not mission.player_hidden(), "Bare floor never hides player")
+	mission.player.position = mission.LOCKERS[0]
+	mission.toggle_locker()
+	check(mission.player_hidden() and not mission.player.visible, "Player deliberately enters a nearby locker")
+	mission.toggle_locker()
+	check(not mission.player_hidden() and mission.player.visible, "Player deliberately exits locker")
 	guard.state = "PATROL"
 	guard.suspicion = 0.0
 	guard.display_facing = Vector2.UP
 	guard.position = Vector2(160, 680)
+	guard.cached_sees = false
+	guard.sight_time = 0.0
+	mission.player.position = Vector2(300, 680)
 	mission.player.is_running = true
 	mission.player.velocity = Vector2(200, 0)
 	guard._physics_process(0.01)
 	check(guard.state == "SEARCH", "Running noise makes guard investigate")
 	check(not mission.player_hidden(), "Running reveals player")
-	mission.player.position = Vector2(570, 230)
+	mission.player.position = mission.INTEL[0]
 	mission._physics_process(0.0)
 	check(mission.collected == 1 and mission.score == 100, "Intel scores once")
 	mission._physics_process(0.0)
@@ -48,9 +55,9 @@ func run() -> void:
 	mission.player.position = mission.EXIT
 	mission._physics_process(0.0)
 	check(not mission.finished, "Exit is locked until all intel collected")
-	mission.player.position = Vector2(1000, 1000)
+	mission.player.position = mission.INTEL[1]
 	mission._physics_process(0.0)
-	mission.player.position = Vector2(1560, 170)
+	mission.player.position = mission.INTEL[2]
 	mission._physics_process(0.0)
 	mission.player.position = mission.EXIT
 	mission._physics_process(0.0)

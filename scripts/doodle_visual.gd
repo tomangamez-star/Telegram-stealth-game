@@ -20,6 +20,7 @@ func _draw() -> void:
 	var visual_mode: int = 0 if player.is_npc else player.player_visual_style
 	var idle_breath: float = sin(personality.clock * 2.1) * (1.0 - moving)
 	var run_blend: float = clampf((player.velocity.length() - 180.0) / 140.0, 0.0, 1.0)
+	var stealth_blend: float = 1.0 if player.stealth_pose and moving > 0.02 else 0.0
 	var phase: float = player.stride_phase
 	var forward: Vector2 = player.display_facing
 	var right: Vector2 = Vector2(-forward.y, forward.x)
@@ -38,6 +39,10 @@ func _draw() -> void:
 
 	var body_center: Vector2 = -forward * (5.0 + 4.0 * run_blend)
 	var head_center: Vector2 = forward * (8.0 + 9.0 * run_blend)
+	# Quiet movement reads as a careful crouch: head tucked, torso lowered and
+	# limbs kept close. This is visual only; collision remains predictable.
+	body_center -= forward * 4.0 * stealth_blend
+	head_center -= forward * 8.0 * stealth_blend
 	body_center += right * idle_breath * 0.85
 	head_center += forward * idle_breath * 0.7
 	body_center += forward * stop_tug * 3.5
@@ -57,13 +62,15 @@ func _draw() -> void:
 	draw_circle(Vector2.ZERO, 23.0, Color(0.06, 0.035, 0.02, 0.19))
 	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
 
-	var stride: float = (8.0 + 11.0 * run_blend) * moving
+	var stride: float = (8.0 + 11.0 * run_blend) * moving * lerpf(1.0, 0.48, stealth_blend)
 	stride *= [1.0, 0.72, 1.18][gait_style]
 	var leg_side: float = 10.0
 	var left_leg: Vector2 = body_center - forward * 15.0 - right * leg_side + forward * step_wave * stride
 	var right_leg: Vector2 = body_center - forward * 15.0 + right * leg_side + forward * opposite * stride
 	var left_arm: Vector2 = body_center - right * 27.0 - forward * (step_wave * (5.0 + 6.0 * run_blend) * moving)
 	var right_arm: Vector2 = body_center + right * 27.0 + forward * (step_wave * (5.0 + 6.0 * run_blend) * moving)
+	left_arm = left_arm.lerp(body_center - right * 19.0 - forward * 7.0, stealth_blend * 0.72)
+	right_arm = right_arm.lerp(body_center + right * 19.0 - forward * 7.0, stealth_blend * 0.72)
 	if personality.gesture == "wave":
 		right_arm += forward * 17.0 + right * sin(personality.clock * 10.0) * 7.0
 	elif personality.gesture == "stretch":
