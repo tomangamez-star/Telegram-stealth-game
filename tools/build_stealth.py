@@ -14,12 +14,14 @@ godot = shutil.which(sys.argv[1]) or str(pathlib.Path(sys.argv[1]).resolve())
 out = pathlib.Path(sys.argv[2]).resolve() if len(sys.argv) > 2 else root / 'build/stealth'
 out.mkdir(parents=True, exist_ok=True)
 template_dir = pathlib.Path.home() / '.local/share/godot/export_templates/4.3.stable'
-export_mode = '--export-release' if (template_dir / 'web_nothreads_release.zip').exists() else '--export-debug'
+has_release = (template_dir / 'web_nothreads_release.zip').exists() or (template_dir / 'web_dlink_nothreads_release.zip').exists()
+has_debug = (template_dir / 'web_debug.zip').exists() or (template_dir / 'web_dlink_nothreads_debug.zip').exists()
+export_mode = '--export-release' if has_release else ('--export-debug' if has_debug else None)
 with tempfile.TemporaryDirectory(prefix='doodle-covert-') as temp:
     stage = pathlib.Path(temp) / 'project'
     stage.mkdir()
     shutil.copy2(root / 'project.godot', stage / 'project.godot')
-    for folder in ['scripts/stealth', 'assets/characters', 'assets/stealth']:
+    for folder in ['scripts/stealth', 'assets/characters', 'assets/stealth', 'assets/audio']:
         shutil.copytree(root / folder, stage / folder, ignore=shutil.ignore_patterns('*.import'))
     for filename in ['doodle_player.gd', 'doodle_visual.gd', 'doodle_personality.gd', 'doodle_atlas.gd', 'directional_rig_atlas.gd']:
         shutil.copy2(root / 'scripts' / filename, stage / 'scripts' / filename)
@@ -48,7 +50,19 @@ progressive_web_app/enabled=false
 ''')
     subprocess.run([godot, '--headless', '--editor', '--path', str(stage), '--import', '--quit'], check=True)
     subprocess.run([godot, '--headless', '--path', str(stage), '--script', 'tests/stealth_regression.gd'], check=True)
-    subprocess.run([godot, '--headless', '--path', str(stage), export_mode, 'Stealth Web', str(out / 'index.html')], check=True)
+    if export_mode:
+        subprocess.run([godot, '--headless', '--path', str(stage), export_mode, 'Stealth Web', str(out / 'index.html')], check=True)
+    else:
+        # Repack gameplay into an already exported web shell when this machine
+        # has Godot but not the large web template bundle.
+        if not (out / 'index.html').exists():
+            raise RuntimeError('Web templates are missing and no existing docs/index.html shell is available')
+        subprocess.run([godot, '--headless', '--path', str(stage), '--export-pack', 'Stealth Web', str(out / 'index.pck')], check=True)
+    # Debug templates are used in lightweight local environments, but the public
+    # page should still carry the real game title rather than Godot's DEBUG tag.
+    index = out / 'index.html'
+    index.write_text(index.read_text().replace('Doodle Covert (DEBUG)', 'Doodle Covert'))
+    shutil.copy2(root / 'assets/stealth/boot_splash.png', out / 'index.png')
     launch = subprocess.run([godot, '--headless', '--main-pack', str(out / 'index.pck'), '--quit-after', '120'], capture_output=True, text=True, cwd=temp, timeout=30)
     if launch.returncode or 'ERROR:' in launch.stderr:
         raise RuntimeError(launch.stdout + launch.stderr)
