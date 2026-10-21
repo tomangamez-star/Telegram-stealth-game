@@ -4,6 +4,7 @@ Usage: python3 tools/build_stealth.py /path/to/godot [output-directory]
 Requires Godot 4.3 and its Web export templates.
 """
 import pathlib
+import re
 import shutil
 import subprocess
 import sys
@@ -58,11 +59,27 @@ progressive_web_app/enabled=false
         if not (out / 'index.html').exists():
             raise RuntimeError('Web templates are missing and no existing docs/index.html shell is available')
         subprocess.run([godot, '--headless', '--path', str(stage), '--export-pack', 'Stealth Web', str(out / 'index.pck')], check=True)
-    # Debug templates are used in lightweight local environments, but the public
-    # page should still carry the real game title rather than Godot's DEBUG tag.
     index = out / 'index.html'
-    index.write_text(index.read_text().replace('Doodle Covert (DEBUG)', 'Doodle Covert'))
+    html = index.read_text().replace('Doodle Covert (DEBUG)', 'Doodle Covert')
+    html = re.sub(r'"index\.pck":\d+', f'"index.pck":{(out / "index.pck").stat().st_size}', html)
+    loader_css = '''
+#status-splash { display:none !important; }
+#loader-brand { width:min(78vw,720px); text-align:center; color:#91f1d0; font-family:Arial,sans-serif; }
+#loader-title { font-size:clamp(28px,5vw,54px); font-weight:800; letter-spacing:.08em; margin-bottom:42px; }
+#loader-track { position:relative; height:64px; }
+#loader-doodle { position:absolute; width:82px; height:auto; bottom:19px; left:0%; transform:translateX(-40%); transition:left .18s linear; animation:doodle-step .42s ease-in-out infinite alternate; }
+#status-progress { width:100%; height:15px; margin:38px 0 0; accent-color:#7ce0bf; }
+#loader-percent { margin-top:12px; color:#b6c8ce; font-size:20px; font-weight:700; }
+@keyframes doodle-step { from{transform:translateX(-40%) translateY(0) rotate(-2deg)} to{transform:translateX(-40%) translateY(-6px) rotate(2deg)} }
+'''
+    if '#loader-brand' not in html:
+        html = html.replace('</style>', loader_css + '\n</style>')
+        html = html.replace('<img id="status-splash" src="index.png" alt="">\n\t\t\t<progress id="status-progress"></progress>', '<div id="loader-brand"><div id="loader-title">DOODLE / COVERT</div><div id="loader-track"><img id="loader-doodle" src="loading_doodle.png" alt=""><progress id="status-progress"></progress></div><div id="loader-percent">0%</div></div>')
+        html = html.replace('<script src="index.js"></script>', '<script src="https://telegram.org/js/telegram-web-app.js"></script>\n\t\t<script src="index.js"></script>')
+        html = html.replace('statusProgress.max = total;', 'statusProgress.max = total;\n\t\t\t\t\tconst percent = Math.max(0, Math.min(100, Math.round(current / total * 100)));\n\t\t\t\t\tdocument.getElementById(\'loader-percent\').textContent = percent + \'%\';\n\t\t\t\t\tdocument.getElementById(\'loader-doodle\').style.left = percent + \'%\';')
+    index.write_text(html)
     shutil.copy2(root / 'assets/stealth/boot_splash.png', out / 'index.png')
+    shutil.copy2(root / 'assets/stealth/loading_doodle.png', out / 'loading_doodle.png')
     launch = subprocess.run([godot, '--headless', '--main-pack', str(out / 'index.pck'), '--quit-after', '120'], capture_output=True, text=True, cwd=temp, timeout=30)
     if launch.returncode or 'ERROR:' in launch.stderr:
         raise RuntimeError(launch.stdout + launch.stderr)

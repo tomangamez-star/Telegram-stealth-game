@@ -7,7 +7,7 @@ OUT = Path(__file__).resolve().parents[1] / "assets/stealth"
 OUT.mkdir(parents=True, exist_ok=True)
 SIZE = (1600, 1200)
 WALLS = [
-    (0,0,1600,40),(0,1160,1600,40),(0,0,40,1200),(1560,0,40,1200),
+    (0,0,740,40),(860,0,740,40),(0,1160,1600,40),(0,0,40,1200),(1560,0,40,1200),
     (620,40,40,80),(620,220,40,200),(620,520,40,200),(620,820,40,200),(620,1120,40,40),
     (940,40,40,80),(940,220,40,200),(940,520,40,200),(940,820,40,200),(940,1120,40,40),
     (40,290,580,30),(980,290,580,30),(40,590,580,30),(980,590,580,30),
@@ -42,6 +42,12 @@ for y in (120,420,720,1020):
         d.line((x+5,y+8,x+35,y+8), fill="#88a5ad", width=3)
         d.line((x+5,y+92,x+35,y+92), fill="#17232a", width=3)
 
+# Extraction door at the far end of the hallway.
+d.rectangle((740,0,860,42), fill="#214b43")
+d.line((748,37,852,37), fill="#8ff1d1", width=5)
+d.polygon([(800,12),(782,30),(792,30),(792,50),(808,50),(808,30),(818,30)], fill="#8ff1d1")
+d.text((778,58), "EXIT", font=font, fill="#8ff1d1")
+
 for x,y,w,h in WALLS:
     d.rectangle((x+7,y+8,x+w+7,y+h+8), fill="#070d11")
     d.rectangle((x,y,x+w,y+h), fill="#5b707a")
@@ -69,12 +75,6 @@ boot = Image.new("RGB", (1280,720), "#071017")
 b = ImageDraw.Draw(boot)
 for radius, color in [(185,"#0b1f28"),(125,"#10313a"),(70,"#174a4d")]:
     b.ellipse((640-radius,315-radius,640+radius,315+radius), fill=color)
-b.ellipse((605,255,675,325), fill="#de9c72", outline="#f0bd91", width=5)
-b.line((640,325,640,430), fill="#7ce0bf", width=14)
-b.line((640,350,590,395), fill="#7ce0bf", width=11)
-b.line((640,350,690,395), fill="#7ce0bf", width=11)
-b.line((640,425,600,485), fill="#7ce0bf", width=12)
-b.line((640,425,680,485), fill="#7ce0bf", width=12)
 try:
     title_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf", 54)
     small_font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
@@ -86,5 +86,22 @@ b.text(((1280-(box[2]-box[0]))/2,535), title, font=title_font, fill="#91f1d0")
 subtitle = "PREPARING THE MISSION"
 box = b.textbbox((0,0), subtitle, font=small_font)
 b.text(((1280-(box[2]-box[0]))/2,610), subtitle, font=small_font, fill="#78949e")
+# Compose the actual original directional doodle into a transparent loader asset.
+atlas_path = OUT.parent / "characters" / "directional_rig.png"
+if atlas_path.exists():
+    atlas = Image.open(atlas_path).convert("RGBA")
+    cell_w, cell_h = atlas.width // 4, atlas.height // 4
+    head = atlas.crop((0, cell_h, cell_w, cell_h * 2))
+    body = atlas.crop((0, cell_h * 3, cell_w, cell_h * 4))
+    doodle = Image.new("RGBA", (cell_w, int(cell_h * 1.42)), (0,0,0,0))
+    doodle.alpha_composite(body, (0, int(cell_h * 0.42)))
+    doodle.alpha_composite(head, (0, 0))
+    bounds = doodle.getbbox()
+    if bounds: doodle = doodle.crop(bounds)
+    doodle.thumbnail((180,220), Image.Resampling.LANCZOS)
+    doodle.save(OUT / "loading_doodle.png", optimize=True)
+    boot.paste(doodle, (640-doodle.width//2, 315-doodle.height//2), doodle)
+
 boot.save(OUT / "boot_splash.png", optimize=True)
-print("Baked room_map.png and boot_splash.png")
+
+print("Baked room_map.png, boot_splash.png and loading_doodle.png")

@@ -23,12 +23,17 @@ var look_index := 0
 var look_interval := 2.7
 var look_time := 2.7
 var notice_announced := false
+var post_position := Vector2.ZERO
+var home_facing := Vector2.DOWN
 
 func cycle_player_visual_style() -> int:
 	player_visual_style = 0
 	return 0
 
 func _physics_process(delta: float) -> void:
+	if not mission.game_started:
+		velocity = Vector2.ZERO
+		return
 	if mission.finished:
 		velocity = Vector2.ZERO
 		return
@@ -72,8 +77,9 @@ func _update_guard(delta: float) -> void:
 	elif state == "SEARCH":
 		search_time -= delta
 		if search_time <= 0.0:
-			state = "PATROL"
+			state = "RETURN"
 			suspicion = 0.0
+			last_seen = post_position
 	else:
 		suspicion = maxf(0.0, suspicion - delta * 0.45)
 		if mission.player.is_running and mission.player.velocity.length() > 100.0 and global_position.distance_to(target) < 260.0:
@@ -87,6 +93,17 @@ func _update_guard(delta: float) -> void:
 		_queue_visual(delta, 20.0 if OS.has_feature("web") else 30.0)
 		return
 	var destination: Vector2 = patrol[patrol_index] if state == "PATROL" and not patrol.is_empty() else last_seen
+	if state == "RETURN": destination = post_position
+	if state == "RETURN" and global_position.distance_to(post_position) < 34.0:
+		global_position = post_position
+		velocity = Vector2.ZERO
+		state = "PATROL"
+		patrol_index = 0
+		facing = home_facing
+		display_facing = home_facing
+		path = PackedVector2Array()
+		path_index = 0
+		return
 	if state == "PATROL" and not patrol.is_empty() and global_position.distance_to(destination) < 36.0:
 		patrol_index = (patrol_index + 1) % patrol.size()
 		destination = patrol[patrol_index]

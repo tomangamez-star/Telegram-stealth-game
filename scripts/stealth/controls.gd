@@ -20,6 +20,7 @@ var ui_time := 0.0
 var last_status := ""
 var last_stats := ""
 var ui_scale := 1.0
+var game_active := false
 
 func _ready() -> void:
 	layer = 30
@@ -89,6 +90,11 @@ func reset_for_sector() -> void:
 	last_stats = ""
 	hud.queue_redraw()
 
+func set_game_active(active: bool) -> void:
+	game_active = active
+	hud.visible = active
+	if not active: reset_for_sector()
+
 func _process(delta: float) -> void:
 	ui_time -= delta
 	if ui_time > 0.0 or not is_instance_valid(mission.player): return
@@ -109,7 +115,7 @@ func _process(delta: float) -> void:
 		stats_label.text = stats
 
 func _input(event: InputEvent) -> void:
-	if mission.finished: return
+	if mission.finished or not game_active: return
 	var touch_radius := 112.0 * ui_scale
 	if event is InputEventScreenTouch:
 		if event.pressed:
@@ -145,7 +151,7 @@ func _update_stick(pos: Vector2) -> void:
 	hud.queue_redraw()
 
 func _draw_controls() -> void:
-	if mission.finished: return
+	if mission.finished or not game_active: return
 	var outer := 104.0 * ui_scale
 	hud.draw_circle(joystick_center, outer, Color(0.04, 0.10, 0.14, 0.78))
 	hud.draw_arc(joystick_center, outer, 0, TAU, 40, Color(0.55, 0.9, 0.8, 0.70), 4.0 * ui_scale, true)

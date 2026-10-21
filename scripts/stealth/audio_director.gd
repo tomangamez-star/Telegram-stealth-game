@@ -13,6 +13,7 @@ var players := {}
 var player_step_time := 0.0
 var guard_step_times := {}
 var cough_time := 8.0
+var enabled := true
 
 func _ready() -> void:
 	for event_name in EVENT_NAMES:
@@ -26,21 +27,34 @@ func _ready() -> void:
 		players[event_name] = player
 
 func _load_optional(stem: String):
-	for extension in [".wav", ".mp3"]:
-		var path: String = AUDIO_ROOT + stem + extension
-		if FileAccess.file_exists(path): return load(path)
+	for candidate in [stem, stem.replace("_", "-")]:
+		for extension in [".wav", ".mp3"]:
+			var path: String = AUDIO_ROOT + candidate + extension
+			if FileAccess.file_exists(path): return load(path)
 	return null
 
 func play_event(event_name: String) -> void:
-	if not players.has(event_name): return
+	if not enabled or not players.has(event_name): return
 	var player: AudioStreamPlayer = players[event_name]
+	if player.playing and event_name in ["guard_steps", "player_run_steps"]: return
 	player.play()
 
 func update_player_steps(speed: float, running: bool, delta: float) -> void:
 	player_step_time -= delta
-	if speed < 25.0 or player_step_time > 0.0: return
-	play_event("player_run_steps" if running else "player_stealth_steps")
-	player_step_time = 0.26 if running else 0.43
+	# Stealth walking intentionally stays silent until it receives its own sound.
+	if not running or speed < 25.0 or player_step_time > 0.0: return
+	play_event("player_run_steps")
+	player_step_time = 0.26
+
+func toggle_enabled() -> bool:
+	enabled = not enabled
+	for player in players.values():
+		player.volume_db = 0.0 if enabled else -80.0
+	return enabled
+
+func unlock_web_audio() -> void:
+	if OS.has_feature("web"):
+		JavaScriptBridge.eval("(function(){var c=window.godotAudioContext||window.audioContext;if(c&&c.state==='suspended')c.resume();if(window.Telegram&&Telegram.WebApp)Telegram.WebApp.expand();})()")
 
 func update_guard_steps(guard, speed: float, delta: float) -> void:
 	var key: int = guard.get_instance_id()

@@ -4,12 +4,13 @@ const Agent = preload("res://scripts/stealth/agent.gd")
 const Controls = preload("res://scripts/stealth/controls.gd")
 const Overlay = preload("res://scripts/stealth/overlay.gd")
 const AudioDirector = preload("res://scripts/stealth/audio_director.gd")
+const MainMenu = preload("res://scripts/stealth/menu.gd")
 const MAP_TEXTURE = preload("res://assets/stealth/room_map.png")
 
 const MAP_SIZE := Vector2(1600, 1200)
 const CELL := 25
 const WALLS := [
-	Rect2(0, 0, 1600, 40), Rect2(0, 1160, 1600, 40),
+	Rect2(0, 0, 740, 40), Rect2(860, 0, 740, 40), Rect2(0, 1160, 1600, 40),
 	Rect2(0, 0, 40, 1200), Rect2(1560, 0, 40, 1200),
 	Rect2(620, 40, 40, 80), Rect2(620, 220, 40, 200),
 	Rect2(620, 520, 40, 200), Rect2(620, 820, 40, 200), Rect2(620, 1120, 40, 40),
@@ -24,7 +25,7 @@ const FURNITURE := [
 	Rect2(75, 1050, 175, 52), Rect2(1350, 1050, 175, 52),
 ]
 const INTEL := [Vector2(340, 170), Vector2(1260, 470), Vector2(340, 770)]
-const EXIT := Vector2(800, 1090)
+const EXIT := Vector2(800, 75)
 
 var player
 var controls
@@ -42,6 +43,8 @@ var won := false
 var grid := AStarGrid2D.new()
 var actors: Node2D
 var camera: Camera2D
+var game_started := false
+var main_menu
 
 func _ready() -> void:
 	if OS.has_feature("web"): Engine.max_fps = 45
@@ -60,6 +63,10 @@ func _ready() -> void:
 	overlay.mission = self
 	overlay.z_index = 5
 	add_child(overlay)
+	main_menu = MainMenu.new()
+	main_menu.mission = self
+	add_child(main_menu)
+	controls.set_game_active(false)
 
 func _add_map_sprite(texture: Texture2D, layer: int) -> void:
 	var sprite := Sprite2D.new()
@@ -133,8 +140,10 @@ func _add_guard(route: Array) -> void:
 	var guard = _guard_base()
 	guard.patrol = PackedVector2Array(route)
 	guard.position = route[0]
+	guard.post_position = route[0]
 	guard.facing = (route[1] - route[0]).normalized()
 	guard.display_facing = guard.facing
+	guard.home_facing = guard.facing
 	actors.add_child(guard)
 	guards.append(guard)
 
@@ -142,10 +151,12 @@ func _add_sentry(at: Vector2, directions: Array, interval: float) -> void:
 	var guard = _guard_base()
 	guard.guard_mode = "SENTRY"
 	guard.position = at
+	guard.post_position = at
 	guard.look_directions = PackedVector2Array(directions)
 	guard.look_interval = interval
 	guard.facing = directions[0]
 	guard.display_facing = directions[0]
+	guard.home_facing = directions[0]
 	actors.add_child(guard)
 	guards.append(guard)
 
@@ -162,7 +173,7 @@ func _guard_base():
 	return guard
 
 func _physics_process(delta: float) -> void:
-	if finished: return
+	if finished or not game_started: return
 	elapsed += delta
 	for i in range(remaining.size() - 1, -1, -1):
 		if player.position.distance_to(remaining[i]) < 58.0:
@@ -171,6 +182,10 @@ func _physics_process(delta: float) -> void:
 			score += 100
 			audio.play_event("intel_collect")
 	if collected == 3 and player.position.distance_to(EXIT) < 78.0: finish(true)
+
+func start_game() -> void:
+	game_started = true
+	controls.set_game_active(true)
 
 func clear_sight(from: Vector2, to: Vector2) -> bool:
 	var ray := PhysicsRayQueryParameters2D.create(from, to, 1)
@@ -203,6 +218,7 @@ func _nearest_walkable(cell: Vector2i) -> Vector2i:
 func finish(success: bool) -> void:
 	if finished: return
 	finished = true
+	game_started = false
 	won = success
 	if won: score += 500 + maxi(0, 300 - int(elapsed)) + (250 if detections == 0 else 0)
 	best = maxi(best, score)
@@ -218,3 +234,5 @@ func restart() -> void:
 	actors.queue_free()
 	controls.summary.hide()
 	_start_sector()
+	game_started = true
+	controls.set_game_active(true)

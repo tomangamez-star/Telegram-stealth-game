@@ -11,6 +11,7 @@ func run() -> void:
 	root.add_child(mission)
 	await physics_frame
 	await physics_frame
+	mission.start_game()
 	check(mission.player.player_visual_style == 0, "Original doodle selected")
 	mission.player.cycle_player_visual_style()
 	check(mission.player.player_visual_style == 0, "Style stays locked")
@@ -22,6 +23,9 @@ func run() -> void:
 	check(mission.find_path(Vector2(340, 170), mission.EXIT).size() > 1, "Extraction is reachable")
 	check(mission.guards.size() == 3, "Exactly three deliberately placed guards")
 	check(mission.guards[2].guard_mode == "SENTRY", "Third guard is a stationary lookout")
+	check(mission.EXIT.y < 100.0, "Extraction is at the far end of the hallway")
+	check(mission.audio.streams.has("player_run_steps"), "Hyphenated player run sound is loaded")
+	check(not mission.audio.streams.has("player_stealth_steps"), "Stealth remains silent when its sound is absent")
 	var sentry = mission.guards[2]
 	var first_facing: Vector2 = sentry.display_facing
 	sentry._physics_process(2.8)
@@ -47,6 +51,14 @@ func run() -> void:
 	guard._physics_process(0.01)
 	check(guard.state == "SEARCH", "Running noise makes guard investigate")
 	check(not mission.player_hidden(), "Running reveals player")
+	guard.state = "SEARCH"
+	guard.search_time = 0.0
+	guard.position = Vector2(820, 680)
+	guard.post_position = Vector2(735, 170)
+	guard.cached_sees = false
+	guard.sight_time = 1.0
+	guard._physics_process(0.01)
+	check(guard.state == "RETURN", "Failed search sends guard back to original post")
 	mission.player.position = mission.INTEL[0]
 	mission._physics_process(0.0)
 	check(mission.collected == 1 and mission.score == 100, "Intel scores once")
@@ -72,4 +84,6 @@ func run() -> void:
 	check(mission.score == 0 and mission.collected == 0 and mission.level == 2, "Retry resets failed run without advancing sector")
 	for i in 240: await physics_frame
 	print("Stealth regression: %d failures" % errors)
+	mission.queue_free()
+	await process_frame
 	quit(1 if errors else 0)
